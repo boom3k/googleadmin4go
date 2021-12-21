@@ -1,4 +1,4 @@
-module GoogleAdminDirectory4Go
+module github.com/boom3k/googleadmindirectory4go
 
 go 1.17
 
