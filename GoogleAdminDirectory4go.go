@@ -1,4 +1,4 @@
-package GoogleAdminDirectory4Go
+package googleadmindirectory4go
 
 import (
 	"context"
