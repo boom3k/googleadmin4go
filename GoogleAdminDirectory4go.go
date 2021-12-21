@@ -21,17 +21,18 @@ func Initialize(client *http.Client, adminEmail string) *GoogleDirectory {
 	}
 
 	log.Printf("Initialized GoogleAdmin4Go as (%s)\n", adminEmail)
-	return &GoogleDirectory{Service: service, AdminEmail: adminEmail}
+	return &GoogleDirectory{Service: service, AdminEmail: adminEmail, Domain: strings.Split(adminEmail, "@")[1]}
 }
 
 type GoogleDirectory struct {
 	Service    *admin.Service
 	AdminEmail string
+	Domain     string
 }
 
 /*Users*/
 func (receiver *GoogleDirectory) GetUsers(query string) []*admin.User {
-	request := receiver.Service.Users.List().Fields("*").Domain("usaid.gov").Query(query).MaxResults(500)
+	request := receiver.Service.Users.List().Fields("*").Domain(receiver.Domain).Query(query).MaxResults(500)
 	var userList []*admin.User
 	for {
 		response, err := request.Do()
@@ -67,7 +68,7 @@ func (receiver *GoogleDirectory) GetGroupsByUser(userEmail string) map[*admin.Gr
 
 /*Groups*/
 func (receiver *GoogleDirectory) GetGroups(query string) []*admin.Group {
-	request := receiver.Service.Groups.List().Domain("usaid.gov").Fields("*")
+	request := receiver.Service.Groups.List().Domain(receiver.Domain).Fields("*")
 	if query != "" {
 		request.Query(query)
 	}
