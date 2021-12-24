@@ -13,8 +13,8 @@ import (
 
 var ctx = context.Background()
 
-func Initialize(client *http.Client, adminEmail string) *GoogleDirectory {
-	service, err := admin.NewService(ctx, option.WithHTTPClient(client))
+func Initialize(option *option.ClientOption, adminEmail string) *GoogleDirectory {
+	service, err := admin.NewService(ctx, *option)
 	if err != nil {
 		log.Println(err.Error())
 		panic(err)
