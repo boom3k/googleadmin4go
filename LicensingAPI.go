@@ -9,21 +9,21 @@ import (
 	"strings"
 )
 
-var allProducts = []Product{
-	GoogleWorkspaceBusinessStarter,
-	GoogleWorkspaceBusinessStandard,
-	GoogleWorkspaceBusinessPlus,
-	GoogleWorkspaceEnterpriseEssentials,
-	GoogleWorkspaceEnterpriseStandard,
-	GoogleWorkspaceEnterprisePlus,
-	GoogleWorkspaceEssentials,
-	GoogleWorkspaceFrontline,
-	GoogleVault,
-	GoogleVaultFormerEmployee,
-	GoogleWorkspaceEnterprisePlusArchivedUser,
-	GSuiteBusinessArchivedUser,
-	WorkspaceBusinessPlusArchivedUser,
-	GoogleWorkspaceEnterpriseStandardArchivedUser,
+var AllProducts = []*Product{
+	&GoogleWorkspaceBusinessStarter,
+	&GoogleWorkspaceBusinessStandard,
+	&GoogleWorkspaceBusinessPlus,
+	&GoogleWorkspaceEnterpriseEssentials,
+	&GoogleWorkspaceEnterpriseStandard,
+	&GoogleWorkspaceEnterprisePlus,
+	&GoogleWorkspaceEssentials,
+	&GoogleWorkspaceFrontline,
+	&GoogleVault,
+	&GoogleVaultFormerEmployee,
+	&GoogleWorkspaceEnterprisePlusArchivedUser,
+	&GSuiteBusinessArchivedUser,
+	&WorkspaceBusinessPlusArchivedUser,
+	&GoogleWorkspaceEnterpriseStandardArchivedUser,
 }
 
 func BuildLicensingAPI(client *http.Client, adminEmail string, ctx *context.Context) *LicensingAPI {
@@ -42,11 +42,11 @@ type LicensingAPI struct {
 	Domain     string
 }
 
-func (receiver *LicensingAPI) GetAllDomainLicenses(customerID string) []*licensing.LicenseAssignment {
+func (receiver *LicensingAPI) GetAllDomainLicenses(customerID string, products []Product, maxResults int64) []*licensing.LicenseAssignment {
 	var licenseAssignments []*licensing.LicenseAssignment
-	for _, product := range allProducts {
+	for _, product := range products {
 		log.Printf("Querying for <%s> licenses...\n", product.SKUName)
-		currentSet := receiver.ListForProductAndSku(product.ProductID, product.SKUID, customerID)
+		currentSet := receiver.ListForProductAndSku(product.ProductID, product.SKUID, customerID, maxResults)
 		if currentSet != nil {
 			licenseAssignments = append(licenseAssignments, currentSet...)
 		}
@@ -54,11 +54,11 @@ func (receiver *LicensingAPI) GetAllDomainLicenses(customerID string) []*licensi
 	return licenseAssignments
 }
 
-func (receiver *LicensingAPI) GetAllDomainLicensesAsMap(customerID string) map[Product][]*licensing.LicenseAssignment {
+func (receiver *LicensingAPI) GetAllDomainLicensesAsMap(customerID string, products []Product, maxResults int64) map[Product][]*licensing.LicenseAssignment {
 	productAssignmentsMap := make(map[Product][]*licensing.LicenseAssignment)
-	for _, product := range allProducts {
+	for _, product := range products {
 		log.Printf("Querying for <%s> licenses...\n", product.SKUName)
-		currentSet := receiver.ListForProductAndSku(product.ProductID, product.SKUID, customerID)
+		currentSet := receiver.ListForProductAndSku(product.ProductID, product.SKUID, customerID, maxResults)
 		productAssignmentsMap[product] = currentSet
 	}
 	return productAssignmentsMap
@@ -92,11 +92,11 @@ func (receiver *LicensingAPI) Insert(product Product, userID string) *licensing.
 	return response
 }
 
-func (receiver *LicensingAPI) ListForProduct(productID, customerID string) []*licensing.LicenseAssignment {
+func (receiver *LicensingAPI) ListForProduct(productID, customerID string, maxResults int64) []*licensing.LicenseAssignment {
 	var licenseAssignments []*licensing.LicenseAssignment
 	pageToken := ""
-	request := receiver.Service.LicenseAssignments.ListForProduct(productID, customerID).Fields("*").MaxResults(1000)
 	skuName := ""
+	request := receiver.Service.LicenseAssignments.ListForProduct(productID, customerID).Fields("*").MaxResults(maxResults)
 	for {
 		response, err := request.PageToken(pageToken).Do()
 		if err != nil {
@@ -108,9 +108,10 @@ func (receiver *LicensingAPI) ListForProduct(productID, customerID string) []*li
 		pageToken = response.NextPageToken
 		if pageToken == "" {
 			break
-		} else if len(response.Items) == 0 {
-			log.Printf("{%s} - No licenses under %s\n", customerID, productID)
-			return nil
+		}
+		if response.Items == nil || len(response.Items) == 0 {
+			log.Printf("{%s} - No further licenses under %s\n", customerID, productID)
+			break
 		}
 		log.Printf("%s licenses thus far: %d\n", skuName, len(licenseAssignments))
 	}
@@ -118,11 +119,11 @@ func (receiver *LicensingAPI) ListForProduct(productID, customerID string) []*li
 	return licenseAssignments
 }
 
-func (receiver *LicensingAPI) ListForProductAndSku(productID, skuID, customerID string) []*licensing.LicenseAssignment {
+func (receiver *LicensingAPI) ListForProductAndSku(productID, skuID, customerID string, maxResults int64) []*licensing.LicenseAssignment {
 	var licenseAssignments []*licensing.LicenseAssignment
 	pageToken := ""
-	request := receiver.Service.LicenseAssignments.ListForProductAndSku(productID, skuID, customerID).Fields("*").MaxResults(1000)
 	skuName := ""
+	request := receiver.Service.LicenseAssignments.ListForProductAndSku(productID, skuID, customerID).Fields("*").MaxResults(maxResults)
 	for {
 		response, err := request.PageToken(pageToken).Do()
 		if err != nil {
@@ -132,9 +133,9 @@ func (receiver *LicensingAPI) ListForProductAndSku(productID, skuID, customerID 
 				panic(err)
 			}
 		}
-		if response == nil || len(response.Items) == 0 {
-			log.Printf("{%s} - No licenses under %s -- %s\n", customerID, skuID, productID)
-			return nil
+		if response.Items == nil || len(response.Items) == 0 {
+			log.Printf("{%s} - No further licenses under %s -- %s\n", customerID, skuID, productID)
+			break
 		}
 		skuName = response.Items[0].SkuName
 		licenseAssignments = append(licenseAssignments, response.Items...)
@@ -174,18 +175,18 @@ type Product struct {
 }
 
 func GetProductBySKUID(skuID string) *Product {
-	for _, product := range allProducts {
+	for _, product := range AllProducts {
 		if product.SKUID == skuID {
-			return &product
+			return product
 		}
 	}
 	return nil
 }
 
 func GetProductByName(skuName string) *Product {
-	for _, product := range allProducts {
+	for _, product := range AllProducts {
 		if product.SKUName == skuName {
-			return &product
+			return product
 		}
 	}
 	return nil
