@@ -95,7 +95,7 @@ func (receiver *LicensingAPI) Insert(product Product, userID string) *licensing.
 func (receiver *LicensingAPI) ListForProduct(productID, customerID string) []*licensing.LicenseAssignment {
 	var licenseAssignments []*licensing.LicenseAssignment
 	pageToken := ""
-	request := receiver.Service.LicenseAssignments.ListForProduct(productID, customerID).Fields("*")
+	request := receiver.Service.LicenseAssignments.ListForProduct(productID, customerID).Fields("*").MaxResults(1000)
 	skuName := ""
 	for {
 		response, err := request.PageToken(pageToken).Do()
@@ -121,7 +121,7 @@ func (receiver *LicensingAPI) ListForProduct(productID, customerID string) []*li
 func (receiver *LicensingAPI) ListForProductAndSku(productID, skuID, customerID string) []*licensing.LicenseAssignment {
 	var licenseAssignments []*licensing.LicenseAssignment
 	pageToken := ""
-	request := receiver.Service.LicenseAssignments.ListForProductAndSku(productID, skuID, customerID).Fields("*")
+	request := receiver.Service.LicenseAssignments.ListForProductAndSku(productID, skuID, customerID).Fields("*").MaxResults(1000)
 	skuName := ""
 	for {
 		response, err := request.PageToken(pageToken).Do()
