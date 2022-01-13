@@ -100,8 +100,12 @@ func (receiver *LicensingAPI) ListForProduct(productID, customerID string, maxRe
 	for {
 		response, err := request.PageToken(pageToken).Do()
 		if err != nil {
-			log.Println(err.Error())
-			panic(err)
+			if strings.Contains(err.Error(), "400") {
+				log.Println(err.Error())
+				return licenseAssignments
+			} else {
+				panic(err)
+			}
 		}
 		skuName = response.Items[0].SkuName
 		licenseAssignments = append(licenseAssignments, response.Items...)
@@ -129,6 +133,7 @@ func (receiver *LicensingAPI) ListForProductAndSku(productID, skuID, customerID 
 		if err != nil {
 			if strings.Contains(err.Error(), "400") {
 				log.Println(err.Error())
+				return licenseAssignments
 			} else {
 				panic(err)
 			}
