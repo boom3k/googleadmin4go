@@ -42,7 +42,7 @@ type LicensingAPI struct {
 	Domain     string
 }
 
-func (receiver *LicensingAPI) GetAllDomainLicenses(customerID string, products []Product, maxResults int64) []*licensing.LicenseAssignment {
+func (receiver *LicensingAPI) GetAllDomainLicenses(customerID string, products []*Product, maxResults int64) []*licensing.LicenseAssignment {
 	var licenseAssignments []*licensing.LicenseAssignment
 	for _, product := range products {
 		log.Printf("Querying for <%s> licenses...\n", product.SKUName)
@@ -54,17 +54,17 @@ func (receiver *LicensingAPI) GetAllDomainLicenses(customerID string, products [
 	return licenseAssignments
 }
 
-func (receiver *LicensingAPI) GetAllDomainLicensesAsMap(customerID string, products []Product, maxResults int64) map[Product][]*licensing.LicenseAssignment {
+func (receiver *LicensingAPI) GetAllDomainLicensesAsMap(customerID string, products []*Product, maxResults int64) map[Product][]*licensing.LicenseAssignment {
 	productAssignmentsMap := make(map[Product][]*licensing.LicenseAssignment)
 	for _, product := range products {
 		log.Printf("Querying for <%s> licenses...\n", product.SKUName)
 		currentSet := receiver.ListForProductAndSku(product.ProductID, product.SKUID, customerID, maxResults)
-		productAssignmentsMap[product] = currentSet
+		productAssignmentsMap[*product] = currentSet
 	}
 	return productAssignmentsMap
 }
 
-func (receiver *LicensingAPI) Delete(product Product, userID string) {
+func (receiver *LicensingAPI) Delete(product *Product, userID string) {
 	_, err := receiver.Service.LicenseAssignments.Delete(product.ProductID, product.SKUID, userID).Do()
 	if err != nil {
 		log.Println(err.Error())
@@ -72,7 +72,7 @@ func (receiver *LicensingAPI) Delete(product Product, userID string) {
 	}
 }
 
-func (receiver *LicensingAPI) Get(product Product, userID string) *licensing.LicenseAssignment {
+func (receiver *LicensingAPI) Get(product *Product, userID string) *licensing.LicenseAssignment {
 	response, err := receiver.Service.LicenseAssignments.Get(product.ProductID, product.SKUID, userID).Fields("*").Do()
 	if err != nil {
 		log.Println(err.Error())
@@ -81,7 +81,7 @@ func (receiver *LicensingAPI) Get(product Product, userID string) *licensing.Lic
 	return response
 }
 
-func (receiver *LicensingAPI) Insert(product Product, userID string) *licensing.LicenseAssignment {
+func (receiver *LicensingAPI) Insert(product *Product, userID string) *licensing.LicenseAssignment {
 	licensingAssignmentInsert := &licensing.LicenseAssignmentInsert{}
 	licensingAssignmentInsert.UserId = userID
 	response, err := receiver.Service.LicenseAssignments.Insert(product.ProductID, product.SKUID, licensingAssignmentInsert).Do()
