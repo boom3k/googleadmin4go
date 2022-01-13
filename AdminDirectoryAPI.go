@@ -11,15 +11,12 @@ import (
 	"time"
 )
 
-var ctx = context.Background()
-
-func Build(client *http.Client, adminEmail string) *GoogleDirectory {
-	service, err := admin.NewService(ctx, option.WithHTTPClient(client))
+func BuildDirectoryAPI(client *http.Client, adminEmail string, ctx *context.Context) *GoogleDirectory {
+	service, err := admin.NewService(*ctx, option.WithHTTPClient(client))
 	if err != nil {
 		log.Println(err.Error())
 		panic(err)
 	}
-
 	log.Printf("Initialized GoogleAdmin4Go as (%s)\n", adminEmail)
 	return &GoogleDirectory{Service: service, AdminEmail: adminEmail, Domain: strings.Split(adminEmail, "@")[1]}
 }
