@@ -11,24 +11,24 @@ import (
 	"time"
 )
 
-func BuildDirectoryAPI(client *http.Client, adminEmail string, ctx *context.Context) *GoogleDirectory {
+func Build(client *http.Client, adminEmail string, ctx *context.Context) *DirectoryAPI {
 	service, err := admin.NewService(*ctx, option.WithHTTPClient(client))
 	if err != nil {
 		log.Println(err.Error())
 		panic(err)
 	}
 	log.Printf("Initialized GoogleAdmin4Go as (%s)\n", adminEmail)
-	return &GoogleDirectory{Service: service, AdminEmail: adminEmail, Domain: strings.Split(adminEmail, "@")[1]}
+	return &DirectoryAPI{Service: service, AdminEmail: adminEmail, Domain: strings.Split(adminEmail, "@")[1]}
 }
 
-type GoogleDirectory struct {
+type DirectoryAPI struct {
 	Service    *admin.Service
 	AdminEmail string
 	Domain     string
 }
 
 /*Users*/
-func (receiver *GoogleDirectory) GetUsers(query string) []*admin.User {
+func (receiver *DirectoryAPI) GetUsers(query string) []*admin.User {
 	request := receiver.Service.Users.List().Fields("*").Domain(receiver.Domain).Query(query).MaxResults(500)
 	var userList []*admin.User
 	for {
@@ -48,7 +48,7 @@ func (receiver *GoogleDirectory) GetUsers(query string) []*admin.User {
 	return userList
 }
 
-func (receiver *GoogleDirectory) GetGroupsByUser(userEmail string) map[*admin.Group]*admin.Member {
+func (receiver *DirectoryAPI) GetGroupsByUser(userEmail string) map[*admin.Group]*admin.Member {
 	groupList := receiver.GetGroups("memberKey=" + userEmail)
 	groupMap := make(map[*admin.Group]*admin.Member)
 	for counter, group := range groupList {
@@ -64,7 +64,7 @@ func (receiver *GoogleDirectory) GetGroupsByUser(userEmail string) map[*admin.Gr
 }
 
 /*Groups*/
-func (receiver *GoogleDirectory) GetGroups(query string) []*admin.Group {
+func (receiver *DirectoryAPI) GetGroups(query string) []*admin.Group {
 	request := receiver.Service.Groups.List().Domain(receiver.Domain).Fields("*")
 	if query != "" {
 		request.Query(query)
@@ -86,7 +86,7 @@ func (receiver *GoogleDirectory) GetGroups(query string) []*admin.Group {
 	return groupList
 }
 
-func (receiver *GoogleDirectory) GetGroupByEmail(groupEmail string) *admin.Group {
+func (receiver *DirectoryAPI) GetGroupByEmail(groupEmail string) *admin.Group {
 	response, err := receiver.Service.Groups.Get(groupEmail).Fields("*").Do()
 	if err != nil {
 		log.Println(err.Error())
@@ -96,7 +96,7 @@ func (receiver *GoogleDirectory) GetGroupByEmail(groupEmail string) *admin.Group
 }
 
 /*Members*/
-func (receiver *GoogleDirectory) InsertMember(groupEmail string, member *admin.Member, wg *sync.WaitGroup) {
+func (receiver *DirectoryAPI) InsertMember(groupEmail string, member *admin.Member, wg *sync.WaitGroup) {
 	request := receiver.Service.Members.Insert(groupEmail, member)
 	_, err := request.Do()
 	if err != nil {
@@ -115,7 +115,7 @@ func (receiver *GoogleDirectory) InsertMember(groupEmail string, member *admin.M
 	wg.Done()
 }
 
-func (receiver *GoogleDirectory) InsertMembers(memberList []*admin.Member, groupEmail string, maxRoutines int) {
+func (receiver *DirectoryAPI) InsertMembers(memberList []*admin.Member, groupEmail string, maxRoutines int) {
 	totalInserts := len(memberList)
 	insertCounter := 0
 	log.Printf("Total members to insert into from %s: %d\n", groupEmail, totalInserts)
@@ -143,7 +143,7 @@ func (receiver *GoogleDirectory) InsertMembers(memberList []*admin.Member, group
 
 }
 
-func (receiver *GoogleDirectory) DeleteMember(groupEmail, memberEmail string, wg *sync.WaitGroup) {
+func (receiver *DirectoryAPI) DeleteMember(groupEmail, memberEmail string, wg *sync.WaitGroup) {
 	request := receiver.Service.Members.Delete(groupEmail, memberEmail)
 	err := request.Do()
 	if err != nil {
@@ -157,7 +157,7 @@ func (receiver *GoogleDirectory) DeleteMember(groupEmail, memberEmail string, wg
 	wg.Done()
 }
 
-func (receiver *GoogleDirectory) DeleteMembers(deleteList []string, groupEmail string, maxRoutines int) {
+func (receiver *DirectoryAPI) DeleteMembers(deleteList []string, groupEmail string, maxRoutines int) {
 	totalDeletes := len(deleteList)
 	deleteCounter := 0
 	log.Printf("Total members to remove from %s: %d\n", groupEmail, totalDeletes)
@@ -185,6 +185,6 @@ func (receiver *GoogleDirectory) DeleteMembers(deleteList []string, groupEmail s
 	log.Printf("Total members removed from %s: %d\n", groupEmail, deleteCounter)
 }
 
-func (receiver *GoogleDirectory) GetAllMembersFromGroup() {
+func (receiver *DirectoryAPI) GetAllMembersFromGroup() {
 
 }
