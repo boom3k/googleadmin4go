@@ -11,14 +11,23 @@ import (
 	"time"
 )
 
-func Build(client *http.Client, adminEmail string, ctx *context.Context) *DirectoryAPI {
+func BuildNewDirectoryAPI(client *http.Client, adminEmail string, ctx *context.Context) *DirectoryAPI {
+	newDirectoryAPI := &DirectoryAPI{}
+	newDirectoryAPI.Build(client, adminEmail, ctx)
+	return newDirectoryAPI
+}
+
+func (receiver *DirectoryAPI) Build(client *http.Client, adminEmail string, ctx *context.Context) *DirectoryAPI {
 	service, err := admin.NewService(*ctx, option.WithHTTPClient(client))
 	if err != nil {
 		log.Println(err.Error())
 		panic(err)
 	}
 	log.Printf("Initialized GoogleAdmin4Go as (%s)\n", adminEmail)
-	return &DirectoryAPI{Service: service, AdminEmail: adminEmail, Domain: strings.Split(adminEmail, "@")[1]}
+	receiver.Service = service
+	receiver.AdminEmail = adminEmail
+	receiver.Domain = strings.Split(adminEmail, "@")[1]
+	return receiver
 }
 
 type DirectoryAPI struct {
@@ -96,28 +105,32 @@ func (receiver *DirectoryAPI) GetGroupByEmail(groupEmail string) *admin.Group {
 }
 
 /*Members*/
-func (receiver *DirectoryAPI) InsertMember(groupEmail string, member *admin.Member, wg *sync.WaitGroup) {
+
+func (receiver *DirectoryAPI) InsertMember(groupEmail, userEmail, role string) *admin.Member {
+	return receiver.PushMember(groupEmail, &admin.Member{Email: userEmail, Role: role})
+}
+
+func (receiver *DirectoryAPI) PushMember(groupEmail string, member *admin.Member) *admin.Member {
 	request := receiver.Service.Members.Insert(groupEmail, member)
-	_, err := request.Do()
+	result, err := request.Do()
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate") {
 			log.Println(err.Error() + " - Skipping")
-			wg.Done()
-			return
+			return nil
 		}
 		log.Println(err)
 		log.Printf("Insertion of [%s] to group (%s) failed... Retrying in 2 seconds.", member.Email, groupEmail)
 		time.Sleep(2 * time.Second)
-		receiver.InsertMember(groupEmail, member, wg)
-		return
+		receiver.PushMember(groupEmail, member)
+		return nil
 	}
 	log.Printf("Insertion of [%s] to (%s) was successful!", member.Email, groupEmail)
-	wg.Done()
+	return result
 }
 
-func (receiver *DirectoryAPI) InsertMembers(memberList []*admin.Member, groupEmail string, maxRoutines int) {
+func (receiver *DirectoryAPI) InsertMembers(memberList []*admin.Member, groupEmail string, maxRoutines int) []*admin.Member {
 	totalInserts := len(memberList)
-	insertCounter := 0
+	var completedInserts []*admin.Member
 	log.Printf("Total members to insert into from %s: %d\n", groupEmail, totalInserts)
 
 	for {
@@ -127,10 +140,14 @@ func (receiver *DirectoryAPI) InsertMembers(memberList []*admin.Member, groupEma
 		wg := &sync.WaitGroup{}
 		wg.Add(maxRoutines)
 		for i := range memberList[:maxRoutines] {
-			log.Printf("Insert user  [%d] of [%d]\n", insertCounter, totalInserts)
-			insertCounter++
+			log.Printf("InsertMember user  [%d] of [%d]\n", len(completedInserts), totalInserts)
 			memberToInsert := memberList[i]
-			go receiver.InsertMember(groupEmail, memberToInsert, wg)
+			go func() {
+				receiver.PushMember(groupEmail, memberToInsert)
+				completedInserts = append(completedInserts, memberToInsert)
+				wg.Done()
+			}()
+			//go receiver.PushMemberWorker(groupEmail, memberToInsert, wg)
 		}
 		wg.Wait()
 
@@ -139,44 +156,46 @@ func (receiver *DirectoryAPI) InsertMembers(memberList []*admin.Member, groupEma
 			break
 		}
 	}
-	log.Printf("Total members inserted into %s: %d\n", groupEmail, insertCounter)
-
+	log.Printf("Total members inserted into %s: %d\n", groupEmail, len(completedInserts))
+	return completedInserts
 }
 
-func (receiver *DirectoryAPI) DeleteMember(groupEmail, memberEmail string, wg *sync.WaitGroup) {
+func (receiver *DirectoryAPI) DeleteMember(groupEmail, memberEmail string) {
 	request := receiver.Service.Members.Delete(groupEmail, memberEmail)
 	err := request.Do()
 	if err != nil {
 		log.Println(err)
 		log.Printf("Deletion of [%s] from group (%s) failed... Retrying in 2 seconds", memberEmail, groupEmail)
 		time.Sleep(2 * time.Second)
-		receiver.DeleteMember(groupEmail, memberEmail, wg)
+		receiver.DeleteMember(groupEmail, memberEmail)
 		return
 	}
 	log.Printf("Deletetion of [%s] from (%s) was successful!", memberEmail, groupEmail)
-	wg.Done()
 }
 
-func (receiver *DirectoryAPI) DeleteMembers(deleteList []string, groupEmail string, maxRoutines int) {
+func (receiver *DirectoryAPI) DeleteMembers(deleteList []string, groupEmail string, batchSize int) {
 	totalDeletes := len(deleteList)
 	deleteCounter := 0
 	log.Printf("Total members to remove from %s: %d\n", groupEmail, totalDeletes)
 
 	for {
-		if len(deleteList) <= maxRoutines {
-			maxRoutines = len(deleteList)
+		if len(deleteList) <= batchSize {
+			batchSize = len(deleteList)
 		}
 		wg := &sync.WaitGroup{}
-		wg.Add(maxRoutines)
-		for i := range deleteList[:maxRoutines] {
+		wg.Add(batchSize)
+		for i := range deleteList[:batchSize] {
 			log.Printf("Delete user  [%d] of [%d]\n", deleteCounter, totalDeletes)
 			deleteCounter++
 			memberToDelete := deleteList[i]
-			receiver.DeleteMember(groupEmail, memberToDelete, wg)
+			go func() {
+				receiver.DeleteMember(groupEmail, memberToDelete)
+				wg.Done()
+			}()
 		}
 		wg.Wait()
 
-		deleteList = deleteList[maxRoutines:]
+		deleteList = deleteList[batchSize:]
 		if len(deleteList) == 0 {
 			break
 		}
@@ -185,6 +204,21 @@ func (receiver *DirectoryAPI) DeleteMembers(deleteList []string, groupEmail stri
 	log.Printf("Total members removed from %s: %d\n", groupEmail, deleteCounter)
 }
 
-func (receiver *DirectoryAPI) GetAllMembersFromGroup() {
-
+func (receiver *DirectoryAPI) PullGroupMembers(groupEmail string) []*admin.Member {
+	log.Printf("Pulling members from %s\n", groupEmail)
+	var members []*admin.Member
+	for {
+		request, err := receiver.Service.Members.List(groupEmail).Fields("*").MaxResults(200).Do()
+		if err != nil {
+			return nil
+		}
+		members = append(members, request.Members...)
+		nextPageToken := request.NextPageToken
+		if nextPageToken == "" {
+			log.Printf("%s has %d members\n", groupEmail, len(members))
+			break
+		}
+		log.Printf("Members thus far %s --> [%d]\n", groupEmail, len(members))
+	}
+	return members
 }
