@@ -23,10 +23,10 @@ func (receiver *DirectoryAPI) Build(client *http.Client, adminEmail string, ctx 
 		log.Println(err.Error())
 		panic(err)
 	}
-	log.Printf("Initialized GoogleAdmin4Go as (%s)\n", adminEmail)
 	receiver.Service = service
 	receiver.AdminEmail = adminEmail
 	receiver.Domain = strings.Split(adminEmail, "@")[1]
+	log.Printf("DirectoryAPI <%s> as [%s]initialized...\n", receiver, adminEmail)
 	return receiver
 }
 

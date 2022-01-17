@@ -26,14 +26,22 @@ var AllProducts = []*Product{
 	&GoogleWorkspaceEnterpriseStandardArchivedUser,
 }
 
-func BuildLicensingAPI(client *http.Client, adminEmail string, ctx *context.Context) *LicensingAPI {
+func BuildNewLicensingAPI(client *http.Client, adminEmail string, ctx *context.Context) *LicensingAPI {
+	var newLicensingAPI = &LicensingAPI{}
+	return newLicensingAPI.Build(client, adminEmail, ctx)
+}
+
+func (receiver *LicensingAPI) Build(client *http.Client, adminEmail string, ctx *context.Context) *LicensingAPI {
 	service, err := licensing.NewService(*ctx, option.WithHTTPClient(client))
 	if err != nil {
 		log.Println(err.Error())
 		panic(err)
 	}
-	log.Printf("Initialized GoogleAdmin4Go as (%s)\n", adminEmail)
-	return &LicensingAPI{Service: service, AdminEmail: adminEmail, Domain: strings.Split(adminEmail, "@")[1]}
+	receiver.Service = service
+	receiver.AdminEmail = adminEmail
+	receiver.Domain = strings.Split(adminEmail, "@")[1]
+	log.Printf("LicensingAPI <%s> as [%s]initialized...\n", receiver, adminEmail)
+	return receiver
 }
 
 type LicensingAPI struct {
