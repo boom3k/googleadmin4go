@@ -61,7 +61,7 @@ type LicensingAPI struct {
 func (receiver *LicensingAPI) GetLicenses(products []Product, maxResults int64) []*licensing.LicenseAssignment {
 	var licenseAssignments []*licensing.LicenseAssignment
 	wg := sync.WaitGroup{}
-	routineCount := len(products) + 1
+	routineCount := len(products)
 	wg.Add(routineCount)
 	log.Printf("Running %d routines for GetLicenses()\n", routineCount)
 	for _, currentProduct := range products {
@@ -81,7 +81,7 @@ func (receiver *LicensingAPI) GetLicenses(products []Product, maxResults int64) 
 func (receiver *LicensingAPI) GetLicensesMap(products []Product, maxResults int64) map[Product][]*licensing.LicenseAssignment {
 	productAssignmentsMap := make(map[Product][]*licensing.LicenseAssignment)
 	wg := sync.WaitGroup{}
-	routineCount := len(products) + 1
+	routineCount := len(products)
 	wg.Add(routineCount)
 	log.Printf("Running %d routines for GetLicensesMap()\n", routineCount)
 
