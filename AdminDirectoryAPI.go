@@ -23,7 +23,7 @@ func (receiver *DirectoryAPI) Build(client *http.Client, adminEmail string, ctx 
 		log.Println(err.Error())
 		panic(err)
 	}
-	response, err := service.Users.Get(adminEmail).Fields("customerID").Do()
+	response, err := service.Users.Get(adminEmail).Fields("customerId").Do()
 	if err != nil {
 		log.Println(err.Error())
 		panic(err)
