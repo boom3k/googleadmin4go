@@ -23,15 +23,28 @@ func (receiver *DirectoryAPI) Build(client *http.Client, adminEmail string, ctx 
 		log.Println(err.Error())
 		panic(err)
 	}
+	response, err := service.Users.Get(adminEmail).Fields("customerID").Do()
+	if err != nil {
+		log.Println(err.Error())
+		panic(err)
+	}
 	receiver.Service = service
+	receiver.CustomerID = response.CustomerId
 	receiver.AdminEmail = adminEmail
 	receiver.Domain = strings.Split(adminEmail, "@")[1]
 	log.Printf("DirectoryAPI <%s> as [%s]initialized...\n", receiver, adminEmail)
+	log.Printf("DirectoryAPI --> \n"+
+		"\tService: %s\n"+
+		"\tCustomerID: %s\n"+
+		"\tAdminEmail: %s\n"+
+		"\tDomain: %s\n", receiver.Service.BasePath, receiver.CustomerID, receiver.AdminEmail, receiver.Domain,
+	)
 	return receiver
 }
 
 type DirectoryAPI struct {
 	Service    *admin.Service
+	CustomerID string
 	AdminEmail string
 	Domain     string
 }
@@ -105,8 +118,7 @@ func (receiver *DirectoryAPI) GetGroupByEmail(groupEmail string) *admin.Group {
 }
 
 /*Members*/
-
-func (receiver *DirectoryAPI) InsertMember(groupEmail, userEmail, role string) *admin.Member {
+func (receiver *DirectoryAPI) PushMemberByEmail(groupEmail, userEmail, role string) *admin.Member {
 	return receiver.PushMember(groupEmail, &admin.Member{Email: userEmail, Role: role})
 }
 
@@ -140,7 +152,7 @@ func (receiver *DirectoryAPI) InsertMembers(memberList []*admin.Member, groupEma
 		wg := &sync.WaitGroup{}
 		wg.Add(maxRoutines)
 		for i := range memberList[:maxRoutines] {
-			log.Printf("InsertMember user  [%d] of [%d]\n", len(completedInserts), totalInserts)
+			log.Printf("PushMemberByEmail user  [%d] of [%d]\n", len(completedInserts), totalInserts)
 			memberToInsert := memberList[i]
 			go func() {
 				receiver.PushMember(groupEmail, memberToInsert)
@@ -204,12 +216,14 @@ func (receiver *DirectoryAPI) DeleteMembers(deleteList []string, groupEmail stri
 	log.Printf("Total members removed from %s: %d\n", groupEmail, deleteCounter)
 }
 
-func (receiver *DirectoryAPI) PullGroupMembers(groupEmail string) []*admin.Member {
-	log.Printf("Pulling members from %s\n", groupEmail)
+func (receiver *DirectoryAPI) GetMembers(groupEmail string, roles []string) []*admin.Member {
+	allRoles := strings.ToUpper(strings.Join(roles, ","))
+	log.Printf("Retreiving  %s members from %s\n", allRoles, groupEmail)
 	var members []*admin.Member
 	for {
-		request, err := receiver.Service.Members.List(groupEmail).Fields("*").MaxResults(200).Do()
+		request, err := receiver.Service.Members.List(groupEmail).Roles(allRoles).Fields("*").MaxResults(200).Do()
 		if err != nil {
+			log.Println(err.Error())
 			return nil
 		}
 		members = append(members, request.Members...)
