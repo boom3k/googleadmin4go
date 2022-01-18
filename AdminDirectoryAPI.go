@@ -224,8 +224,8 @@ func (receiver *DirectoryAPI) GetMembers(groupEmail string, roles []string) []*a
 		if err != nil {
 			log.Println(err.Error())
 			if strings.Contains(err.Error(), "Quota") {
-				log.Println("Backing off for 2.5 seconds...")
-				time.Sleep(time.Second*2 + 1/2)
+				log.Println("Backing off for 3 seconds...")
+				time.Sleep(time.Second * 3)
 				return receiver.GetMembers(groupEmail, roles)
 			}
 			return nil
