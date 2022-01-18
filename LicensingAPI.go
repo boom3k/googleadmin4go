@@ -26,31 +26,38 @@ var AllProducts = []*Product{
 	&GoogleWorkspaceEnterpriseStandardArchivedUser,
 }
 
-func BuildNewLicensingAPI(client *http.Client, adminEmail string, ctx *context.Context) *LicensingAPI {
+func BuildNewLicensingAPI(client *http.Client, adminEmail, customerID string, ctx *context.Context) *LicensingAPI {
 	var newLicensingAPI = &LicensingAPI{}
-	return newLicensingAPI.Build(client, adminEmail, ctx)
+	return newLicensingAPI.Build(client, adminEmail, customerID, ctx)
 }
 
-func (receiver *LicensingAPI) Build(client *http.Client, adminEmail string, ctx *context.Context) *LicensingAPI {
+func (receiver *LicensingAPI) Build(client *http.Client, adminEmail, customerID string, ctx *context.Context) *LicensingAPI {
 	service, err := licensing.NewService(*ctx, option.WithHTTPClient(client))
 	if err != nil {
 		log.Println(err.Error())
 		panic(err)
 	}
 	receiver.Service = service
+	receiver.CustomerID = customerID
 	receiver.AdminEmail = adminEmail
 	receiver.Domain = strings.Split(adminEmail, "@")[1]
-	log.Printf("LicensingAPI <%s> as [%s]initialized...\n", receiver, adminEmail)
+	log.Printf("LicensingAPI --> \n"+
+		"\tService: %s\n"+
+		"\tCustomerID: %s\n"+
+		"\tAdminEmail: %s\n"+
+		"\tDomain: %s\n", receiver.Service.BasePath, receiver.CustomerID, receiver.AdminEmail, receiver.Domain,
+	)
 	return receiver
 }
 
 type LicensingAPI struct {
 	Service    *licensing.Service
+	CustomerID string
 	AdminEmail string
 	Domain     string
 }
 
-func (receiver *LicensingAPI) GetAllDomainLicenses(customerID string, products []*Product, maxResults int64) []*licensing.LicenseAssignment {
+func (receiver *LicensingAPI) GetLicenses(customerID string, products []*Product, maxResults int64) []*licensing.LicenseAssignment {
 	var licenseAssignments []*licensing.LicenseAssignment
 	for _, product := range products {
 		log.Printf("Querying for <%s> licenses...\n", product.SKUName)
@@ -62,7 +69,7 @@ func (receiver *LicensingAPI) GetAllDomainLicenses(customerID string, products [
 	return licenseAssignments
 }
 
-func (receiver *LicensingAPI) GetAllDomainLicensesAsMap(customerID string, products []*Product, maxResults int64) map[Product][]*licensing.LicenseAssignment {
+func (receiver *LicensingAPI) GetLicensesMap(customerID string, products []*Product, maxResults int64) map[Product][]*licensing.LicenseAssignment {
 	productAssignmentsMap := make(map[Product][]*licensing.LicenseAssignment)
 	for _, product := range products {
 		log.Printf("Querying for <%s> licenses...\n", product.SKUName)

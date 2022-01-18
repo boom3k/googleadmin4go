@@ -32,7 +32,6 @@ func (receiver *DirectoryAPI) Build(client *http.Client, adminEmail string, ctx 
 	receiver.CustomerID = response.CustomerId
 	receiver.AdminEmail = adminEmail
 	receiver.Domain = strings.Split(adminEmail, "@")[1]
-	log.Printf("DirectoryAPI <%s> as [%s]initialized...\n", receiver, adminEmail)
 	log.Printf("DirectoryAPI --> \n"+
 		"\tService: %s\n"+
 		"\tCustomerID: %s\n"+
