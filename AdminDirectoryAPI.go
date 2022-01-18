@@ -223,6 +223,11 @@ func (receiver *DirectoryAPI) GetMembers(groupEmail string, roles []string) []*a
 		request, err := receiver.Service.Members.List(groupEmail).Roles(allRoles).Fields("*").MaxResults(200).Do()
 		if err != nil {
 			log.Println(err.Error())
+			if strings.Contains(err.Error(), "Quota") {
+				log.Println("Backing off for 2.5 seconds...")
+				time.Sleep(time.Second*2 + 1/2)
+				return receiver.GetMembers(groupEmail, roles)
+			}
 			return nil
 		}
 		members = append(members, request.Members...)
