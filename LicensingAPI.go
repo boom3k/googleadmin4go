@@ -43,10 +43,10 @@ func (receiver *LicensingAPI) Build(client *http.Client, adminEmail, customerID 
 	receiver.AdminEmail = adminEmail
 	receiver.Domain = strings.Split(adminEmail, "@")[1]
 	log.Printf("LicensingAPI --> \n"+
-		"\tService: %s\n"+
+		"\tService: %v\n"+
 		"\tCustomerID: %s\n"+
 		"\tAdminEmail: %s\n"+
-		"\tDomain: %s\n", receiver.Service.BasePath, receiver.CustomerID, receiver.AdminEmail, receiver.Domain,
+		"\tDomain: %s\n", &receiver.Service, receiver.CustomerID, receiver.AdminEmail, receiver.Domain,
 	)
 	return receiver
 }
