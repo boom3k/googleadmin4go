@@ -50,7 +50,6 @@ type DirectoryAPI struct {
 
 /*Users*/
 func (receiver *DirectoryAPI) GetUsers(query string, ch chan []*admin.User) []*admin.User {
-	defer close(ch)
 	request := receiver.Service.Users.List().Fields("*").Domain(receiver.Domain).Query(query).MaxResults(500)
 	var userList []*admin.User
 	for {
@@ -60,12 +59,13 @@ func (receiver *DirectoryAPI) GetUsers(query string, ch chan []*admin.User) []*a
 			panic(err)
 		}
 		userList = append(userList, response.Users...)
-		ch <- response.Users
 		log.Printf("Query \"%s\" returned %d users thus far.\n", query, len(userList))
 		if response.NextPageToken == "" {
+			close(ch)
 			break
 		}
 		request.PageToken(response.NextPageToken)
+		ch <- response.Users
 		<-ch
 	}
 	return userList
