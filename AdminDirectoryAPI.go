@@ -71,7 +71,7 @@ func (receiver *DirectoryAPI) GetUsers(query string, ch chan<- []*admin.User) []
 }
 
 func (receiver *DirectoryAPI) GetGroupsByUser(userEmail string) map[*admin.Group]*admin.Member {
-	groupList := receiver.GetGroups("memberKey="+userEmail, nil)
+	groupList := receiver.GetGroups("memberKey=" + userEmail)
 	groupMap := make(map[*admin.Group]*admin.Member)
 	for counter, group := range groupList {
 		memberResponse, err := receiver.Service.Members.Get(group.Email, userEmail).Fields("*").Do()
@@ -86,7 +86,7 @@ func (receiver *DirectoryAPI) GetGroupsByUser(userEmail string) map[*admin.Group
 }
 
 /*Groups*/
-func (receiver *DirectoryAPI) GetGroups(query string, ch chan<- []*admin.Group) []*admin.Group {
+func (receiver *DirectoryAPI) GetGroups(query string) []*admin.Group {
 	request := receiver.Service.Groups.List().Domain(receiver.Domain).Fields("*")
 	if query != "" {
 		request.Query(query)
