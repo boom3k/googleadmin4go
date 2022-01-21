@@ -66,6 +66,7 @@ func (receiver *DirectoryAPI) GetUsers(query string, ch chan []*admin.User) []*a
 			break
 		}
 		request.PageToken(response.NextPageToken)
+		<-ch
 	}
 	return userList
 }
