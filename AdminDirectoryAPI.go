@@ -59,14 +59,19 @@ func (receiver *DirectoryAPI) GetUsers(query string, ch chan []*admin.User) []*a
 			panic(err)
 		}
 		userList = append(userList, response.Users...)
+
+		log.Printf("<- %v[%d] sent by %v.GetUsers()\n", ch, len(response.Users), receiver)
+		ch <- response.Users
+		log.Printf("%v.GetUsers() waiting for %v[nil] to come back <-\n", receiver, ch)
+		<-ch
+
 		log.Printf("Query \"%s\" returned %d users thus far.\n", query, len(userList))
 		if response.NextPageToken == "" {
 			close(ch)
+			log.Printf("<- Closed channel %v per Sender %v.GetUsers()\n", ch, receiver)
 			break
 		}
 		request.PageToken(response.NextPageToken)
-		ch <- response.Users
-		<-ch
 	}
 	return userList
 }
