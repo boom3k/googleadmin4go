@@ -49,7 +49,7 @@ type DirectoryAPI struct {
 }
 
 /*Users*/
-func (receiver *DirectoryAPI) GetUsers(query string) []*admin.User {
+func (receiver *DirectoryAPI) GetUsers(query string, ch chan<- []*admin.User) []*admin.User {
 	request := receiver.Service.Users.List().Fields("*").Domain(receiver.Domain).Query(query).MaxResults(500)
 	var userList []*admin.User
 	for {
@@ -59,6 +59,7 @@ func (receiver *DirectoryAPI) GetUsers(query string) []*admin.User {
 			panic(err)
 		}
 		userList = append(userList, response.Users...)
+		ch <- response.Users
 		log.Printf("Query \"%s\" returned %d users thus far.\n", query, len(userList))
 		if response.NextPageToken == "" {
 			break
@@ -70,7 +71,7 @@ func (receiver *DirectoryAPI) GetUsers(query string) []*admin.User {
 }
 
 func (receiver *DirectoryAPI) GetGroupsByUser(userEmail string) map[*admin.Group]*admin.Member {
-	groupList := receiver.GetGroups("memberKey=" + userEmail)
+	groupList := receiver.GetGroups("memberKey="+userEmail, nil)
 	groupMap := make(map[*admin.Group]*admin.Member)
 	for counter, group := range groupList {
 		memberResponse, err := receiver.Service.Members.Get(group.Email, userEmail).Fields("*").Do()
@@ -85,7 +86,7 @@ func (receiver *DirectoryAPI) GetGroupsByUser(userEmail string) map[*admin.Group
 }
 
 /*Groups*/
-func (receiver *DirectoryAPI) GetGroups(query string) []*admin.Group {
+func (receiver *DirectoryAPI) GetGroups(query string, ch chan<- []*admin.Group) []*admin.Group {
 	request := receiver.Service.Groups.List().Domain(receiver.Domain).Fields("*")
 	if query != "" {
 		request.Query(query)
