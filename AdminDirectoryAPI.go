@@ -49,7 +49,7 @@ type DirectoryAPI struct {
 }
 
 /*Users*/
-func (receiver *DirectoryAPI) GetUsers(query string, ch chan []*admin.User) []*admin.User {
+func (receiver *DirectoryAPI) GetUsers(query string, backoffTime int, ch chan []*admin.User) []*admin.User {
 	request := receiver.Service.Users.List().Fields("*").Domain(receiver.Domain).Query(query).MaxResults(500)
 	var userList []*admin.User
 	for {
@@ -60,14 +60,18 @@ func (receiver *DirectoryAPI) GetUsers(query string, ch chan []*admin.User) []*a
 		}
 		userList = append(userList, response.Users...)
 
-		log.Printf("<- %v[%d] sent by %v.GetUsers()\n", ch, len(response.Users), receiver)
-		ch <- response.Users
-		log.Printf("%v.GetUsers() waiting for %v[nil] to come back <-\n", receiver, ch)
-		<-ch
+		if ch != nil {
+			log.Printf("<- %v[%d] sent by %v.GetUsers()\n", ch, len(response.Users), receiver)
+			ch <- response.Users
+			log.Printf("%v.GetUsers() waiting for %v[nil] to come back <-\n", receiver, ch)
+			<-ch
+		}
 
 		log.Printf("Query \"%s\" returned %d users thus far.\n", query, len(userList))
 		if response.NextPageToken == "" {
-			close(ch)
+			if ch != nil {
+				close(ch)
+			}
 			log.Printf("<- Closed channel %v per Sender %v.GetUsers()\n", ch, receiver)
 			break
 		}
