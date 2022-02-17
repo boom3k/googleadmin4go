@@ -49,7 +49,7 @@ type DirectoryAPI struct {
 }
 
 /*Users*/
-func (receiver *DirectoryAPI) GetUsers(query string, backoffTime int, ch chan []*admin.User) []*admin.User {
+func (receiver *DirectoryAPI) GetUsers(query string, ch chan []*admin.User) []*admin.User {
 	request := receiver.Service.Users.List().Fields("*").Domain(receiver.Domain).Query(query).MaxResults(500)
 	var userList []*admin.User
 	for {
@@ -250,4 +250,19 @@ func (receiver *DirectoryAPI) GetMembers(groupEmail string, roles []string) []*a
 		log.Printf("Members thus far %s --> [%d]\n", groupEmail, len(members))
 	}
 	return members
+}
+
+func (receiver *DirectoryAPI) GetMembersMapped(groupEmail string, roles []string) map[string][]*admin.Member {
+	m := make(map[string][]*admin.Member)
+	for _, member := range receiver.GetMembers(groupEmail, roles) {
+		switch member.Role {
+		case "OWNER":
+			m["OWNERS"] = append(m["OWNERS"], member)
+		case "MANAGER":
+			m["MANAGERS"] = append(m["MANAGERS"], member)
+		case "MEMBER":
+			m["MEMBERS"] = append(m["MEMBERS"], member)
+		}
+	}
+	return m
 }
