@@ -27,12 +27,8 @@ func BuildNewDirectoryAPI(client *http.Client, adminEmail string, ctx *context.C
 	newDirectoryAPI.CustomerID = response.CustomerId
 	newDirectoryAPI.AdminEmail = adminEmail
 	newDirectoryAPI.Domain = strings.Split(adminEmail, "@")[1]
-	log.Printf("DirectoryAPI --> \n"+
-		"\tService: %v\n"+
-		"\tCustomerID: %s\n"+
-		"\tAdminEmail: %s\n"+
-		"\tDomain: %s\n", &newDirectoryAPI.Service, newDirectoryAPI.CustomerID, newDirectoryAPI.AdminEmail, newDirectoryAPI.Domain,
-	)
+	log.Printf("DirectoryAPI -->Service: %v,\tCustomerID: %s,\tAdminEmail: %s,\tDomain: %s\n", 
+		&newDirectoryAPI.Service, newDirectoryAPI.CustomerID, newDirectoryAPI.AdminEmail, newDirectoryAPI.Domain)
 	return newDirectoryAPI
 }
 
