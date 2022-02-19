@@ -13,11 +13,6 @@ import (
 
 func BuildNewDirectoryAPI(client *http.Client, adminEmail string, ctx *context.Context) *DirectoryAPI {
 	newDirectoryAPI := &DirectoryAPI{}
-	newDirectoryAPI.Build(client, adminEmail, ctx)
-	return newDirectoryAPI
-}
-
-func (receiver *DirectoryAPI) Build(client *http.Client, adminEmail string, ctx *context.Context) *DirectoryAPI {
 	service, err := admin.NewService(*ctx, option.WithHTTPClient(client))
 	if err != nil {
 		log.Println(err.Error())
@@ -28,17 +23,17 @@ func (receiver *DirectoryAPI) Build(client *http.Client, adminEmail string, ctx 
 		log.Println(err.Error())
 		panic(err)
 	}
-	receiver.Service = service
-	receiver.CustomerID = response.CustomerId
-	receiver.AdminEmail = adminEmail
-	receiver.Domain = strings.Split(adminEmail, "@")[1]
+	newDirectoryAPI.Service = service
+	newDirectoryAPI.CustomerID = response.CustomerId
+	newDirectoryAPI.AdminEmail = adminEmail
+	newDirectoryAPI.Domain = strings.Split(adminEmail, "@")[1]
 	log.Printf("DirectoryAPI --> \n"+
 		"\tService: %v\n"+
 		"\tCustomerID: %s\n"+
 		"\tAdminEmail: %s\n"+
-		"\tDomain: %s\n", &receiver.Service, receiver.CustomerID, receiver.AdminEmail, receiver.Domain,
+		"\tDomain: %s\n", &newDirectoryAPI.Service, newDirectoryAPI.CustomerID, newDirectoryAPI.AdminEmail, newDirectoryAPI.Domain,
 	)
-	return receiver
+	return newDirectoryAPI
 }
 
 type DirectoryAPI struct {
