@@ -40,7 +40,7 @@ type DirectoryAPI struct {
 }
 
 /*Users*/
-func (receiver *DirectoryAPI) GetUsers(query string) []*admin.User {
+func (receiver *DirectoryAPI) QueryUsers(query string) []*admin.User {
 	request := receiver.Service.Users.List().Fields("*").Domain(receiver.Domain).Query(query).MaxResults(500)
 	var userList []*admin.User
 	for {
@@ -74,7 +74,6 @@ func (receiver *DirectoryAPI) GetGroupsByUser(userEmail string) map[*admin.Group
 	}
 	return groupMap
 }
-
 /*Groups*/
 func (receiver *DirectoryAPI) GetGroups(query string) []*admin.Group {
 	request := receiver.Service.Groups.List().Domain(receiver.Domain).Fields("*")
