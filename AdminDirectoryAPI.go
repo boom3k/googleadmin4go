@@ -2,6 +2,9 @@ package googleadmin4go
 
 import (
 	"context"
+	"encoding/json"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	admin "google.golang.org/api/admin/directory/v1"
 	"google.golang.org/api/option"
 	"log"
@@ -11,9 +14,9 @@ import (
 	"time"
 )
 
-func BuildNewDirectoryAPI(client *http.Client, adminEmail string, ctx *context.Context) *DirectoryAPI {
+func BuildNewDirectoryAPI(client *http.Client, adminEmail string, ctx context.Context) *DirectoryAPI {
 	newDirectoryAPI := &DirectoryAPI{}
-	service, err := admin.NewService(*ctx, option.WithHTTPClient(client))
+	service, err := admin.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		log.Println(err.Error())
 		panic(err)
@@ -27,9 +30,25 @@ func BuildNewDirectoryAPI(client *http.Client, adminEmail string, ctx *context.C
 	newDirectoryAPI.CustomerID = response.CustomerId
 	newDirectoryAPI.AdminEmail = adminEmail
 	newDirectoryAPI.Domain = strings.Split(adminEmail, "@")[1]
-	log.Printf("DirectoryAPI -->Service: %v,\tCustomerID: %s,\tAdminEmail: %s,\tDomain: %s\n", 
+	log.Printf("DirectoryAPI -->Service: %v,\tCustomerID: %s,\tAdminEmail: %s,\tDomain: %s\n",
 		&newDirectoryAPI.Service, newDirectoryAPI.CustomerID, newDirectoryAPI.AdminEmail, newDirectoryAPI.Domain)
 	return newDirectoryAPI
+}
+
+func BuildDirectoryApiWithOauth2(adminEmail string, scopes []string, clientSecret, authorizationToken []byte, ctx context.Context) *DirectoryAPI {
+	config, err := google.ConfigFromJSON(clientSecret, scopes...)
+	if err != nil {
+		log.Println(err.Error())
+		panic(err)
+	}
+	token := &oauth2.Token{}
+	err = json.Unmarshal(authorizationToken, token)
+	if err != nil {
+		log.Println(err.Error())
+		panic(err)
+	}
+	client := config.Client(context.Background(), token)
+	return BuildNewDirectoryAPI(client, adminEmail, ctx)
 }
 
 type DirectoryAPI struct {
@@ -74,6 +93,7 @@ func (receiver *DirectoryAPI) GetGroupsByUser(userEmail string) map[*admin.Group
 	}
 	return groupMap
 }
+
 /*Groups*/
 func (receiver *DirectoryAPI) GetGroups(query string) []*admin.Group {
 	request := receiver.Service.Groups.List().Domain(receiver.Domain).Fields("*")
